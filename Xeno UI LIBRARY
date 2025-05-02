@@ -1,0 +1,268 @@
+-- Xeno UI Library - All In One
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local mouse = player:GetMouse()
+
+local Xeno = {}
+local tabs = {}
+
+-- UI Setup
+local screenGui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
+screenGui.Name = "XenoUI"
+screenGui.ResetOnSpawn = false
+
+local mainFrame = Instance.new("Frame", screenGui)
+mainFrame.Size = UDim2.new(0, 520, 0, 370)
+mainFrame.Position = UDim2.new(0.5, -260, 0.5, -185)
+mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+mainFrame.BorderSizePixel = 0
+mainFrame.Visible = false
+mainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, 12)
+
+-- Dragging
+local dragging, dragStart, startPos
+mainFrame.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		dragging = true
+		dragStart = input.Position
+		startPos = mainFrame.Position
+		input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then dragging = false end
+		end)
+	end
+end)
+
+game:GetService("UserInputService").InputChanged:Connect(function(input)
+	if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+		local delta = input.Position - dragStart
+		mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+	end
+end)
+
+-- Header
+local header = Instance.new("TextLabel", mainFrame)
+header.Size = UDim2.new(1, -40, 0, 40)
+header.Position = UDim2.new(0, 10, 0, 0)
+header.Text = "Xeno UI Library"
+header.TextColor3 = Color3.new(1, 1, 1)
+header.BackgroundTransparency = 1
+header.TextScaled = true
+header.Font = Enum.Font.GothamBold
+
+-- Close
+local close = Instance.new("TextButton", mainFrame)
+close.Size = UDim2.new(0, 30, 0, 30)
+close.Position = UDim2.new(1, -35, 0, 5)
+close.Text = "X"
+close.TextColor3 = Color3.new(1, 1, 1)
+close.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+close.Font = Enum.Font.GothamBold
+close.TextScaled = true
+Instance.new("UICorner", close).CornerRadius = UDim.new(1, 0)
+
+-- Left Tabs
+local tabFrame = Instance.new("ScrollingFrame", mainFrame)
+tabFrame.Size = UDim2.new(0, 110, 1, -50)
+tabFrame.Position = UDim2.new(0, 0, 0, 50)
+tabFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+tabFrame.ScrollBarThickness = 6
+tabFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+Instance.new("UICorner", tabFrame).CornerRadius = UDim.new(0, 8)
+local tabLayout = Instance.new("UIListLayout", tabFrame)
+tabLayout.Padding = UDim.new(0, 5)
+
+-- Content
+local contentFrame = Instance.new("Frame", mainFrame)
+contentFrame.Size = UDim2.new(1, -120, 1, -60)
+contentFrame.Position = UDim2.new(0, 120, 0, 50)
+contentFrame.BackgroundTransparency = 1
+
+-- Scroll
+local contentScroll = Instance.new("ScrollingFrame", contentFrame)
+contentScroll.Size = UDim2.new(1, 0, 1, 0)
+contentScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+contentScroll.ScrollBarThickness = 6
+contentScroll.BackgroundTransparency = 1
+
+-- Toggle Button
+local toggleBtn = Instance.new("ImageButton", screenGui)
+toggleBtn.Size = UDim2.new(0, 50, 0, 50)
+toggleBtn.Position = UDim2.new(0, 10, 0.5, -25)
+toggleBtn.Image = "rbxassetid://14170958544"
+toggleBtn.BackgroundTransparency = 1
+
+toggleBtn.MouseButton1Click:Connect(function()
+	if mainFrame.Visible then
+		mainFrame:TweenPosition(UDim2.new(0.5, -260, 0.5, 600), "In", "Back", 0.8, true)
+		wait(0.9)
+		mainFrame.Visible = false
+	else
+		mainFrame.Position = UDim2.new(0.5, -260, 0.5, 600)
+		mainFrame.Visible = true
+		mainFrame:TweenPosition(UDim2.new(0.5, -260, 0.5, -185), "Out", "Back", 1, true)
+	end
+end)
+
+close.MouseButton1Click:Connect(function()
+	mainFrame:TweenPosition(UDim2.new(0.5, -260, 0.5, 600), "In", "Back", 0.8, true)
+	wait(0.9)
+	mainFrame.Visible = false
+end)
+
+-- Animation Show First Time
+mainFrame.Position = UDim2.new(0.5, -260, 0.5, 600)
+mainFrame.Visible = true
+mainFrame:TweenPosition(UDim2.new(0.5, -260, 0.5, -185), "Out", "Back", 1, true)
+
+-- Functions
+function Xeno:MakeTab(name)
+	local tabBtn = Instance.new("TextButton", tabFrame)
+	tabBtn.Size = UDim2.new(1, -10, 0, 40)
+	tabBtn.Text = name
+	tabBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+	tabBtn.TextColor3 = Color3.new(1, 1, 1)
+	tabBtn.Font = Enum.Font.Gotham
+	tabBtn.TextScaled = true
+	tabBtn.AutoButtonColor = false
+	Instance.new("UICorner", tabBtn).CornerRadius = UDim.new(0, 8)
+
+	local tabContent = Instance.new("Frame", contentScroll)
+	tabContent.Size = UDim2.new(1, -10, 0, 0)
+	tabContent.BackgroundTransparency = 1
+	tabContent.Name = "Tab_" .. name
+	tabContent.Visible = false
+	local layout = Instance.new("UIListLayout", tabContent)
+	layout.Padding = UDim.new(0, 6)
+
+	tabs[name] = tabContent
+
+	tabBtn.MouseButton1Click:Connect(function()
+		for _, child in pairs(contentScroll:GetChildren()) do
+			if child:IsA("Frame") then child.Visible = false end
+		end
+		tabContent.Visible = true
+	end)
+
+	return tabContent
+end
+
+function Xeno:AddSection(tab, name)
+	local section = Instance.new("TextLabel", tab)
+	section.Size = UDim2.new(1, -10, 0, 30)
+	section.Text = name
+	section.TextColor3 = Color3.fromRGB(0, 255, 255)
+	section.BackgroundTransparency = 1
+	section.Font = Enum.Font.GothamBold
+	section.TextScaled = true
+end
+
+function Xeno:AddButton(tab, text, callback)
+	local btn = Instance.new("TextButton", tab)
+	btn.Size = UDim2.new(1, -10, 0, 40)
+	btn.Text = text
+	btn.TextColor3 = Color3.new(1, 1, 1)
+	btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+	btn.Font = Enum.Font.Gotham
+	btn.TextScaled = true
+	Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
+	btn.MouseButton1Click:Connect(callback)
+end
+
+function Xeno:AddToggle(tab, text, callback)
+	local state = false
+	local btn = Instance.new("TextButton", tab)
+	btn.Size = UDim2.new(1, -10, 0, 40)
+	btn.Text = "[ OFF ] " .. text
+	btn.TextColor3 = Color3.new(1, 1, 1)
+	btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+	btn.Font = Enum.Font.Gotham
+	btn.TextScaled = true
+	Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
+	btn.MouseButton1Click:Connect(function()
+		state = not state
+		btn.Text = (state and "[ ON ] " or "[ OFF ] ") .. text
+		callback(state)
+	end)
+end
+
+function Xeno:AddSlider(tab, text, min, max, callback)
+	local frame = Instance.new("Frame", tab)
+	frame.Size = UDim2.new(1, -10, 0, 60)
+	frame.BackgroundTransparency = 1
+
+	local label = Instance.new("TextLabel", frame)
+	label.Size = UDim2.new(1, 0, 0, 20)
+	label.Text = text .. ": " .. min
+	label.TextColor3 = Color3.new(1, 1, 1)
+	label.BackgroundTransparency = 1
+	label.Font = Enum.Font.Gotham
+	label.TextScaled = true
+
+	local slider = Instance.new("TextButton", frame)
+	slider.Size = UDim2.new(1, 0, 0, 30)
+	slider.Position = UDim2.new(0, 0, 0, 25)
+	slider.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+	slider.Text = ""
+	Instance.new("UICorner", slider).CornerRadius = UDim.new(0, 6)
+
+	local value = min
+	slider.MouseButton1Down:Connect(function()
+		local conn
+		conn = game:GetService("RunService").RenderStepped:Connect(function()
+			local x = math.clamp(mouse.X - slider.AbsolutePosition.X, 0, slider.AbsoluteSize.X)
+			local percent = x / slider.AbsoluteSize.X
+			value = math.floor(min + (max - min) * percent)
+			label.Text = text .. ": " .. value
+			callback(value)
+		end)
+		game:GetService("UserInputService").InputEnded:Wait()
+		if conn then conn:Disconnect() end
+	end)
+end
+
+function Xeno:AddDropdown(tab, text, list, callback)
+	local dropdown = Instance.new("TextButton", tab)
+	dropdown.Size = UDim2.new(1, -10, 0, 40)
+	dropdown.Text = text
+	dropdown.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+	dropdown.TextColor3 = Color3.new(1, 1, 1)
+	dropdown.Font = Enum.Font.Gotham
+	dropdown.TextScaled = true
+	Instance.new("UICorner", dropdown).CornerRadius = UDim.new(0, 6)
+
+	local open = false
+	dropdown.MouseButton1Click:Connect(function()
+		open = not open
+		for _, item in ipairs(list) do
+			local btn = Instance.new("TextButton", tab)
+			btn.Size = UDim2.new(1, -20, 0, 30)
+			btn.Text = item
+			btn.Font = Enum.Font.Gotham
+			btn.TextScaled = true
+			btn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+			btn.TextColor3 = Color3.new(1, 1, 1)
+			Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+			btn.MouseButton1Click:Connect(function()
+				callback(item)
+			end)
+		end
+	end)
+end
+
+function Xeno:AddTextbox(tab, text, callback)
+	local box = Instance.new("TextBox", tab)
+	box.Size = UDim2.new(1, -10, 0, 40)
+	box.PlaceholderText = text
+	box.Text = ""
+	box.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+	box.TextColor3 = Color3.new(1, 1, 1)
+	box.Font = Enum.Font.Gotham
+	box.TextScaled = true
+	Instance.new("UICorner", box).CornerRadius = UDim.new(0, 8)
+	box.FocusLost:Connect(function(enter)
+		if enter then callback(box.Text) end
+	end)
+end
+
+return Xeno

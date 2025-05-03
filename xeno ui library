@@ -1,0 +1,390 @@
+-- Xenolib Library
+-- Version 1.0
+-- by xeno999
+
+local Xenolib = {}
+Xenolib.__index = Xenolib
+
+-- Utility functions
+local function Tween(obj, props, duration, style, direction)
+    local tweenInfo = TweenInfo.new(duration, style, direction)
+    game:GetService("TweenService"):Create(obj, tweenInfo, props):Play()
+end
+
+local function CreateDraggable(gui, handle)
+    local dragging
+    local dragInput
+    local dragStart
+    local startPos
+
+    local function Update(input)
+        local delta = input.Position - dragStart
+        gui.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+
+    handle.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = gui.Position
+            
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+
+    handle.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
+        end
+    end)
+
+    game:GetService("UserInputService").InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            Update(input)
+        end
+    end)
+end
+
+-- Notification system
+function Xenolib:SendNotification(data)
+    local notification = Instance.new("Frame")
+    notification.Name = "XenoNotification"
+    notification.Size = UDim2.new(0, 300, 0, 80)
+    notification.Position = UDim2.new(1, 10, 1, -90)
+    notification.AnchorPoint = Vector2.new(1, 1)
+    notification.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    notification.BorderSizePixel = 0
+    notification.ZIndex = 100
+    notification.Parent = game:GetService("CoreGui")
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = notification
+
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = Color3.fromRGB(0, 150, 255)
+    stroke.Thickness = 1
+    stroke.Parent = notification
+
+    local title = Instance.new("TextLabel")
+    title.Name = "Title"
+    title.Size = UDim2.new(1, -20, 0, 20)
+    title.Position = UDim2.new(0, 10, 0, 10)
+    title.BackgroundTransparency = 1
+    title.TextColor3 = Color3.fromRGB(0, 200, 255)
+    title.Text = data.Title or "Notification"
+    title.Font = Enum.Font.GothamBold
+    title.TextSize = 16
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    title.Parent = notification
+
+    local text = Instance.new("TextLabel")
+    text.Name = "Text"
+    text.Size = UDim2.new(1, -20, 1, -40)
+    text.Position = UDim2.new(0, 10, 0, 30)
+    text.BackgroundTransparency = 1
+    text.TextColor3 = Color3.fromRGB(200, 200, 200)
+    text.Text = data.Text or ""
+    text.Font = Enum.Font.Gotham
+    text.TextSize = 14
+    text.TextXAlignment = Enum.TextXAlignment.Left
+    text.TextYAlignment = Enum.TextYAlignment.Top
+    text.Parent = notification
+
+    if data.Icon then
+        local icon = Instance.new("ImageLabel")
+        icon.Name = "Icon"
+        icon.Size = UDim2.new(0, 40, 0, 40)
+        icon.Position = UDim2.new(1, -50, 0, 10)
+        icon.BackgroundTransparency = 1
+        icon.Image = data.Icon
+        icon.Parent = notification
+    end
+
+    -- Animation
+    notification.Position = UDim2.new(1, 310, 1, -90)
+    Tween(notification, {Position = UDim2.new(1, 10, 1, -90)}, 0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+
+    -- Auto-remove after duration
+    if data.Duration then
+        task.delay(data.Duration, function()
+            Tween(notification, {Position = UDim2.new(1, 310, 1, -90)}, 0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+            task.wait(0.5)
+            notification:Destroy()
+        end)
+    end
+end
+
+-- Main window creation
+function Xenolib:MakeWindow(config)
+    local self = setmetatable({}, Xenolib)
+    
+    -- Create main screen gui
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "XenoHub"
+    ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    ScreenGui.Parent = game:GetService("CoreGui")
+    
+    -- Main container
+    local MainFrame = Instance.new("Frame")
+    MainFrame.Name = "MainFrame"
+    MainFrame.Size = UDim2.new(0, 500, 0, 400)
+    MainFrame.Position = UDim2.new(0.5, -250, 0.5, -200)
+    MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+    MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+    MainFrame.BorderSizePixel = 0
+    MainFrame.ClipsDescendants = true
+    MainFrame.Parent = ScreenGui
+    
+    local MainCorner = Instance.new("UICorner")
+    MainCorner.CornerRadius = UDim.new(0, 8)
+    MainCorner.Parent = MainFrame
+    
+    local MainStroke = Instance.new("UIStroke")
+    MainStroke.Color = Color3.fromRGB(0, 150, 255)
+    MainStroke.Thickness = 2
+    MainStroke.Parent = MainFrame
+    
+    -- Title bar
+    local TitleBar = Instance.new("Frame")
+    TitleBar.Name = "TitleBar"
+    TitleBar.Size = UDim2.new(1, 0, 0, 40)
+    TitleBar.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+    TitleBar.BorderSizePixel = 0
+    TitleBar.Parent = MainFrame
+    
+    local TitleCorner = Instance.new("UICorner")
+    TitleCorner.CornerRadius = UDim.new(0, 8)
+    TitleCorner.Parent = TitleBar
+    
+    local Title = Instance.new("TextLabel")
+    Title.Name = "Title"
+    Title.Size = UDim2.new(1, -100, 1, 0)
+    Title.Position = UDim2.new(0, 15, 0, 0)
+    Title.BackgroundTransparency = 1
+    Title.Text = config.Name or "Xeno Hub"
+    Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Title.Font = Enum.Font.GothamBold
+    Title.TextSize = 18
+    Title.TextXAlignment = Enum.TextXAlignment.Left
+    Title.Parent = TitleBar
+    
+    local Subtitle = Instance.new("TextLabel")
+    Subtitle.Name = "Subtitle"
+    Subtitle.Size = UDim2.new(0, 100, 0, 14)
+    Subtitle.Position = UDim2.new(1, -115, 0, 3)
+    Subtitle.BackgroundTransparency = 1
+    Subtitle.Text = config.Subtitle or "by: xeno999"
+    Subtitle.TextColor3 = Color3.fromRGB(150, 150, 150)
+    Subtitle.Font = Enum.Font.Gotham
+    Subtitle.TextSize = 12
+    Subtitle.TextXAlignment = Enum.TextXAlignment.Right
+    Subtitle.Parent = TitleBar
+    
+    -- Close button
+    local CloseButton = Instance.new("TextButton")
+    CloseButton.Name = "CloseButton"
+    CloseButton.Size = UDim2.new(0, 30, 0, 30)
+    CloseButton.Position = UDim2.new(1, -40, 0, 5)
+    CloseButton.BackgroundColor3 = Color3.fromRGB(255, 60, 60)
+    CloseButton.Text = "X"
+    CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    CloseButton.Font = Enum.Font.GothamBold
+    CloseButton.TextSize = 16
+    CloseButton.Parent = TitleBar
+    
+    local CloseCorner = Instance.new("UICorner")
+    CloseCorner.CornerRadius = UDim.new(0, 6)
+    CloseCorner.Parent = CloseButton
+    
+    -- Tab buttons container
+    local TabButtons = Instance.new("Frame")
+    TabButtons.Name = "TabButtons"
+    TabButtons.Size = UDim2.new(0, 120, 1, -40)
+    TabButtons.Position = UDim2.new(0, 0, 0, 40)
+    TabButtons.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+    TabButtons.BorderSizePixel = 0
+    TabButtons.Parent = MainFrame
+    
+    -- Tab content container
+    local TabContent = Instance.new("Frame")
+    TabContent.Name = "TabContent"
+    TabContent.Size = UDim2.new(1, -120, 1, -40)
+    TabContent.Position = UDim2.new(0, 120, 0, 40)
+    TabContent.BackgroundTransparency = 1
+    TabContent.Parent = MainFrame
+    
+    -- Make draggable
+    CreateDraggable(MainFrame, TitleBar)
+    
+    -- Close animation
+    CloseButton.MouseButton1Click:Connect(function()
+        if config.CloseCallback then
+            config.CloseCallback()
+        end
+        
+        -- Close animation
+        Tween(MainFrame, {Size = UDim2.new(0, 0, 0, 0)}, 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In)
+        task.wait(0.3)
+        ScreenGui:Destroy()
+    end)
+    
+    -- Intro animation
+    if config.IntroEnabled then
+        MainFrame.Size = UDim2.new(0, 0, 0, 0)
+        Tween(MainFrame, {Size = UDim2.new(0, 500, 0, 400)}, 0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+        
+        if config.IntroText then
+            local introNotification = {
+                Title = config.IntroText,
+                Text = "Loading complete!",
+                Icon = config.IntroIcon,
+                Duration = 3
+            }
+            task.delay(0.5, function()
+                self:SendNotification(introNotification)
+            end)
+        end
+    end
+    
+    -- Tab management
+    self.Tabs = {}
+    
+    function self:MakeTab(tabConfig)
+        local tab = {}
+        
+        -- Create tab button
+        local TabButton = Instance.new("TextButton")
+        TabButton.Name = tabConfig.Name.."Tab"
+        TabButton.Size = UDim2.new(1, -10, 0, 40)
+        TabButton.Position = UDim2.new(0, 5, 0, 5 + (#self.Tabs * 45))
+        TabButton.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+        TabButton.Text = tabConfig.Name
+        TabButton.TextColor3 = Color3.fromRGB(200, 200, 200)
+        TabButton.Font = Enum.Font.Gotham
+        TabButton.TextSize = 14
+        TabButton.Parent = TabButtons
+        
+        local TabCorner = Instance.new("UICorner")
+        TabCorner.CornerRadius = UDim.new(0, 6)
+        TabCorner.Parent = TabButton
+        
+        -- Create tab content
+        local TabFrame = Instance.new("ScrollingFrame")
+        TabFrame.Name = tabConfig.Name.."Content"
+        TabFrame.Size = UDim2.new(1, 0, 1, 0)
+        TabFrame.Position = UDim2.new(0, 0, 0, 0)
+        TabFrame.BackgroundTransparency = 1
+        TabFrame.ScrollBarThickness = 5
+        TabFrame.ScrollBarImageColor3 = Color3.fromRGB(0, 150, 255)
+        TabFrame.Visible = false
+        TabFrame.Parent = TabContent
+        
+        local UIListLayout = Instance.new("UIListLayout")
+        UIListLayout.Padding = UDim.new(0, 5)
+        UIListLayout.Parent = TabFrame
+        
+        -- Tab selection logic
+        TabButton.MouseButton1Click:Connect(function()
+            for _, otherTab in pairs(self.Tabs) do
+                otherTab.Frame.Visible = false
+                otherTab.Button.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+            end
+            
+            TabFrame.Visible = true
+            TabButton.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+        end)
+        
+        -- Activate first tab
+        if #self.Tabs == 0 then
+            TabFrame.Visible = true
+            TabButton.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+        end
+        
+        -- Add elements to tab
+        function tab:AddSection(name)
+            local section = {}
+            
+            local SectionFrame = Instance.new("Frame")
+            SectionFrame.Name = name.."Section"
+            SectionFrame.Size = UDim2.new(1, -20, 0, 30)
+            SectionFrame.BackgroundTransparency = 1
+            SectionFrame.Parent = TabFrame
+            
+            local SectionTitle = Instance.new("TextLabel")
+            SectionTitle.Name = "Title"
+            SectionTitle.Size = UDim2.new(1, 0, 1, 0)
+            SectionTitle.BackgroundTransparency = 1
+            SectionTitle.Text = name
+            SectionTitle.TextColor3 = Color3.fromRGB(0, 200, 255)
+            SectionTitle.Font = Enum.Font.GothamBold
+            SectionTitle.TextSize = 16
+            SectionTitle.TextXAlignment = Enum.TextXAlignment.Left
+            SectionTitle.Parent = SectionFrame
+            
+            local SectionLine = Instance.new("Frame")
+            SectionLine.Name = "Line"
+            SectionLine.Size = UDim2.new(1, 0, 0, 1)
+            SectionLine.Position = UDim2.new(0, 0, 1, 0)
+            SectionLine.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+            SectionLine.BorderSizePixel = 0
+            SectionLine.Parent = SectionFrame
+            
+            return section
+        end
+        
+        -- Add other element creation functions (Toggle, Button, Slider, etc.)
+        -- These would follow similar patterns to what's shown above
+        
+        -- Store tab reference
+        table.insert(self.Tabs, {
+            Name = tabConfig.Name,
+            Button = TabButton,
+            Frame = TabFrame
+        })
+        
+        return tab
+    end
+    
+    function self:SetVisible(visible)
+        MainFrame.Visible = visible
+    end
+    
+    function self:SetCloseCallback(callback)
+        config.CloseCallback = callback
+    end
+    
+    return self
+end
+
+-- Mini toggle creation
+function Xenolib:CreateMiniToggle(config)
+    local MiniToggle = Instance.new("ImageButton")
+    MiniToggle.Name = "XenoMiniToggle"
+    MiniToggle.Size = config.Size
+    MiniToggle.Position = config.Position
+    MiniToggle.BackgroundTransparency = 1
+    MiniToggle.Image = config.Image
+    MiniToggle.Parent = game:GetService("CoreGui")
+    
+    CreateDraggable(MiniToggle, MiniToggle)
+    
+    MiniToggle.MouseButton1Click:Connect(function()
+        if config.Callback then
+            config.Callback(not MiniToggle.Visible)
+        end
+    end)
+    
+    return MiniToggle
+end
+
+-- Make draggable function
+function Xenolib:MakeDraggable(gui, handle)
+    CreateDraggable(gui, handle or gui)
+end
+
+return Xenolib

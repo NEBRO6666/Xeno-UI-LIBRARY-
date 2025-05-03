@@ -1,0 +1,616 @@
+--[[
+Xenolib - مكتبة UI متكاملة مع أنيميشنات متقدمة
+الإصدار: 1.0.0
+المطور: [اسمك]
+]]
+
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+
+local Xenolib = {}
+Xenolib.__index = Xenolib
+
+-- أنيميشنات مسبقة
+Xenolib.Animations = {
+    EaseStyles = {
+        Linear = Enum.EasingStyle.Linear,
+        Sine = Enum.EasingStyle.Sine,
+        Back = Enum.EasingStyle.Back,
+        Quad = Enum.EasingStyle.Quad,
+        Quart = Enum.EasingStyle.Quart,
+        Quint = Enum.EasingStyle.Quint,
+        Bounce = Enum.EasingStyle.Bounce,
+        Elastic = Enum.EasingStyle.Elastic
+    },
+    
+    EaseDirections = {
+        In = Enum.EasingDirection.In,
+        Out = Enum.EasingDirection.Out,
+        InOut = Enum.EasingDirection.InOut
+    }
+}
+
+-- ألوان مسبقة
+Xenolib.Colors = {
+    Primary = Color3.fromRGB(0, 120, 215),
+    Secondary = Color3.fromRGB(40, 40, 40),
+    Accent = Color3.fromRGB(0, 180, 255),
+    Text = Color3.fromRGB(255, 255, 255),
+    Dark = Color3.fromRGB(30, 30, 30),
+    Light = Color3.fromRGB(240, 240, 240)
+}
+
+-- إنشاء نافذة رئيسية
+function Xenolib.new(title, size, autoHide)
+    local self = setmetatable({}, Xenolib)
+    
+    self.Title = title or "Xenolib UI"
+    self.Size = size or UDim2.new(0, 400, 0, 500)
+    self.AutoHide = autoHide or false
+    self.Tabs = {}
+    self.CurrentTab = nil
+    self.Visible = false
+    self.Theme = "Dark"
+    
+    self:CreateMainUI()
+    self:SetupAnimations()
+    self:SetupDragging()
+    
+    if self.AutoHide then
+        self:Hide()
+    end
+    
+    return self
+end
+
+-- إنشاء واجهة المستخدم الرئيسية
+function Xenolib:CreateMainUI()
+    -- الشاشة الرئيسية
+    self.ScreenGui = Instance.new("ScreenGui")
+    self.ScreenGui.Name = "XenolibUI"
+    self.ScreenGui.ResetOnSpawn = false
+    self.ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
+    self.ScreenGui.Parent = game:GetService("CoreGui")
+    
+    -- الإطار الرئيسي
+    self.MainFrame = Instance.new("Frame")
+    self.MainFrame.Name = "MainFrame"
+    self.MainFrame.Size = self.Size
+    self.MainFrame.Position = UDim2.new(0.5, -self.Size.X.Offset/2, 0.5, -self.Size.Y.Offset/2)
+    self.MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+    self.MainFrame.BackgroundColor3 = self.Colors.Dark
+    self.MainFrame.BorderSizePixel = 0
+    self.MainFrame.ClipsDescendants = true
+    self.MainFrame.Parent = self.ScreenGui
+    
+    -- تأثير ظل
+    local uiCorner = Instance.new("UICorner")
+    uiCorner.CornerRadius = UDim.new(0, 8)
+    uiCorner.Parent = self.MainFrame
+    
+    local uiStroke = Instance.new("UIStroke")
+    uiStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    uiStroke.Color = self.Colors.Primary
+    uiStroke.Thickness = 1
+    uiStroke.Parent = self.MainFrame
+    
+    -- شريط العنوان
+    self.TitleBar = Instance.new("Frame")
+    self.TitleBar.Name = "TitleBar"
+    self.TitleBar.Size = UDim2.new(1, 0, 0, 30)
+    self.TitleBar.Position = UDim2.new(0, 0, 0, 0)
+    self.TitleBar.BackgroundColor3 = self.Colors.Secondary
+    self.TitleBar.BorderSizePixel = 0
+    self.TitleBar.Parent = self.MainFrame
+    
+    local titleCorner = Instance.new("UICorner")
+    titleCorner.CornerRadius = UDim.new(0, 8)
+    titleCorner.Parent = self.TitleBar
+    
+    -- نص العنوان
+    self.TitleLabel = Instance.new("TextLabel")
+    self.TitleLabel.Name = "TitleLabel"
+    self.TitleLabel.Size = UDim2.new(0, 200, 1, 0)
+    self.TitleLabel.Position = UDim2.new(0, 10, 0, 0)
+    self.TitleLabel.BackgroundTransparency = 1
+    self.TitleLabel.Text = self.Title
+    self.TitleLabel.TextColor3 = self.Colors.Text
+    self.TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    self.TitleLabel.Font = Enum.Font.GothamBold
+    self.TitleLabel.TextSize = 14
+    self.TitleLabel.Parent = self.TitleBar
+    
+    -- زر الإغلاق
+    self.CloseButton = Instance.new("TextButton")
+    self.CloseButton.Name = "CloseButton"
+    self.CloseButton.Size = UDim2.new(0, 30, 0, 30)
+    self.CloseButton.Position = UDim2.new(1, -30, 0, 0)
+    self.CloseButton.BackgroundColor3 = Color3.fromRGB(255, 60, 60)
+    self.CloseButton.Text = "X"
+    self.CloseButton.TextColor3 = self.Colors.Text
+    self.CloseButton.Font = Enum.Font.GothamBold
+    self.CloseButton.TextSize = 14
+    self.CloseButton.Parent = self.TitleBar
+    
+    local closeCorner = Instance.new("UICorner")
+    closeCorner.CornerRadius = UDim.new(0, 8)
+    closeCorner.Parent = self.CloseButton
+    
+    -- منطقة التبويبات
+    self.TabContainer = Instance.new("Frame")
+    self.TabContainer.Name = "TabContainer"
+    self.TabContainer.Size = UDim2.new(1, -20, 0, 30)
+    self.TabContainer.Position = UDim2.new(0, 10, 0, 40)
+    self.TabContainer.BackgroundTransparency = 1
+    self.TabContainer.Parent = self.MainFrame
+    
+    self.TabListLayout = Instance.new("UIListLayout")
+    self.TabListLayout.FillDirection = Enum.FillDirection.Horizontal
+    self.TabListLayout.Padding = UDim.new(0, 5)
+    self.TabListLayout.Parent = self.TabContainer
+    
+    -- منطقة المحتوى
+    self.ContentFrame = Instance.new("Frame")
+    self.ContentFrame.Name = "ContentFrame"
+    self.ContentFrame.Size = UDim2.new(1, -20, 1, -80)
+    self.ContentFrame.Position = UDim2.new(0, 10, 0, 80)
+    self.ContentFrame.BackgroundTransparency = 1
+    self.ContentFrame.Parent = self.MainFrame
+    
+    self.ContentScrolling = Instance.new("ScrollingFrame")
+    self.ContentScrolling.Name = "ContentScrolling"
+    self.ContentScrolling.Size = UDim2.new(1, 0, 1, 0)
+    self.ContentScrolling.Position = UDim2.new(0, 0, 0, 0)
+    self.ContentScrolling.BackgroundTransparency = 1
+    self.ContentScrolling.ScrollBarThickness = 5
+    self.ContentScrolling.ScrollBarImageColor3 = self.Colors.Primary
+    self.ContentScrolling.Parent = self.ContentFrame
+    
+    self.ContentLayout = Instance.new("UIListLayout")
+    self.ContentLayout.Padding = UDim.new(0, 5)
+    self.ContentLayout.Parent = self.ContentScrolling
+    
+    -- إعداد الأحداث
+    self.CloseButton.MouseButton1Click:Connect(function()
+        self:Close()
+    end)
+end
+
+-- إعداد الأنيميشنات
+function Xenolib:SetupAnimations()
+    self.Animations.Open = TweenService:Create(
+        self.MainFrame,
+        TweenInfo.new(0.5, self.Animations.EaseStyles.Quint, self.Animations.EaseDirections.Out),
+        {Size = self.Size}
+    )
+    
+    self.Animations.Close = TweenService:Create(
+        self.MainFrame,
+        TweenInfo.new(0.5, self.Animations.EaseStyles.Quint, self.Animations.EaseDirections.In),
+        {Size = UDim2.new(0, 0, 0, 0)}
+    )
+    
+    self.Animations.TabSwitch = TweenService:Create(
+        self.ContentScrolling,
+        TweenInfo.new(0.3, self.Animations.EaseStyles.Quad, self.Animations.EaseDirections.Out),
+        {CanvasPosition = Vector2.new(0, 0)}
+    )
+end
+
+-- إعداد سحب النافذة
+function Xenolib:SetupDragging()
+    local dragging
+    local dragInput
+    local dragStart
+    local startPos
+    
+    local function update(input)
+        local delta = input.Position - dragStart
+        self.MainFrame.Position = UDim2.new(
+            startPos.X.Scale, 
+            startPos.X.Offset + delta.X, 
+            startPos.Y.Scale, 
+            startPos.Y.Offset + delta.Y
+        )
+    end
+    
+    self.TitleBar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            dragStart = input.Position
+            startPos = self.MainFrame.Position
+            
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+    
+    self.TitleBar.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement then
+            dragInput = input
+        end
+    end)
+    
+    UserInputService.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            update(input)
+        end
+    end)
+end
+
+-- إظهار النافذة
+function Xenolib:Show()
+    if not self.Visible then
+        self.Visible = true
+        self.MainFrame.Visible = true
+        self.Animations.Open:Play()
+    end
+end
+
+-- إخفاء النافذة
+function Xenolib:Hide()
+    if self.Visible then
+        self.Visible = false
+        self.Animations.Close:Play()
+        self.Animations.Close.Completed:Wait()
+        self.MainFrame.Visible = false
+    end
+end
+
+-- تبديل الحالة (إظهار/إخفاء)
+function Xenolib:Toggle()
+    if self.Visible then
+        self:Hide()
+    else
+        self:Show()
+    end
+end
+
+-- إغلاق النافذة
+function Xenolib:Close()
+    self.Animations.Close:Play()
+    self.Animations.Close.Completed:Wait()
+    self.ScreenGui:Destroy()
+end
+
+-- إضافة تبويب جديد
+function Xenolib:AddTab(tabName)
+    local tab = {}
+    tab.Name = tabName or "Tab " .. (#self.Tabs + 1)
+    tab.Buttons = {}
+    tab.Sections = {}
+    
+    -- إنشاء زر التبويب
+    local tabButton = Instance.new("TextButton")
+    tabButton.Name = tabName .. "Button"
+    tabButton.Size = UDim2.new(0, 80, 1, 0)
+    tabButton.BackgroundColor3 = self.Colors.Secondary
+    tabButton.Text = tabName
+    tabButton.TextColor3 = self.Colors.Text
+    tabButton.Font = Enum.Font.Gotham
+    tabButton.TextSize = 12
+    tabButton.Parent = self.TabContainer
+    
+    local tabCorner = Instance.new("UICorner")
+    tabCorner.CornerRadius = UDim.new(0, 5)
+    tabCorner.Parent = tabButton
+    
+    -- إنشاء إطار المحتوى
+    local tabContent = Instance.new("Frame")
+    tabContent.Name = tabName .. "Content"
+    tabContent.Size = UDim2.new(1, 0, 1, 0)
+    tabContent.Position = UDim2.new(0, 0, 0, 0)
+    tabContent.BackgroundTransparency = 1
+    tabContent.Visible = false
+    tabContent.Parent = self.ContentScrolling
+    
+    local contentLayout = Instance.new("UIListLayout")
+    contentLayout.Padding = UDim.new(0, 10)
+    contentLayout.Parent = tabContent
+    
+    -- إعداد أحداث التبويب
+    tabButton.MouseButton1Click:Connect(function()
+        self:SwitchTab(tab)
+    end)
+    
+    tab.Button = tabButton
+    tab.Content = tabContent
+    
+    table.insert(self.Tabs, tab)
+    
+    if #self.Tabs == 1 then
+        self:SwitchTab(tab)
+    end
+    
+    return tab
+end
+
+-- تبديل التبويب
+function Xenolib:SwitchTab(tab)
+    if self.CurrentTab then
+        self.CurrentTab.Content.Visible = false
+        local tween = TweenService:Create(
+            self.CurrentTab.Button,
+            TweenInfo.new(0.2, self.Animations.EaseStyles.Quad, self.Animations.EaseDirections.Out),
+            {BackgroundColor3 = self.Colors.Secondary}
+        )
+        tween:Play()
+    end
+    
+    self.CurrentTab = tab
+    tab.Content.Visible = true
+    
+    local tween = TweenService:Create(
+        tab.Button,
+        TweenInfo.new(0.2, self.Animations.EaseStyles.Quad, self.Animations.EaseDirections.Out),
+        {BackgroundColor3 = self.Colors.Primary}
+    )
+    tween:Play()
+    
+    self.Animations.TabSwitch:Play()
+end
+
+-- إضافة قسم إلى التبويب
+function Xenolib.Tab:AddSection(sectionName)
+    local section = {}
+    section.Name = sectionName or "Section " .. (#self.Sections + 1)
+    
+    -- إنشاء إطار القسم
+    local sectionFrame = Instance.new("Frame")
+    sectionFrame.Name = sectionName .. "Section"
+    sectionFrame.Size = UDim2.new(1, 0, 0, 0)
+    sectionFrame.AutomaticSize = Enum.AutomaticSize.Y
+    sectionFrame.BackgroundColor3 = Xenolib.Colors.Secondary
+    sectionFrame.Parent = self.Content
+    
+    local sectionCorner = Instance.new("UICorner")
+    sectionCorner.CornerRadius = UDim.new(0, 5)
+    sectionCorner.Parent = sectionFrame
+    
+    -- شريط عنوان القسم
+    local sectionTitle = Instance.new("TextLabel")
+    sectionTitle.Name = "Title"
+    sectionTitle.Size = UDim2.new(1, -10, 0, 25)
+    sectionTitle.Position = UDim2.new(0, 5, 0, 5)
+    sectionTitle.BackgroundTransparency = 1
+    sectionTitle.Text = sectionName
+    sectionTitle.TextColor3 = Xenolib.Colors.Text
+    sectionTitle.TextXAlignment = Enum.TextXAlignment.Left
+    sectionTitle.Font = Enum.Font.GothamBold
+    sectionTitle.TextSize = 12
+    sectionTitle.Parent = sectionFrame
+    
+    -- محتوى القسم
+    local sectionContent = Instance.new("Frame")
+    sectionContent.Name = "Content"
+    sectionContent.Size = UDim2.new(1, -10, 0, 0)
+    sectionContent.Position = UDim2.new(0, 5, 0, 35)
+    sectionContent.AutomaticSize = Enum.AutomaticSize.Y
+    sectionContent.BackgroundTransparency = 1
+    sectionContent.Parent = sectionFrame
+    
+    local contentLayout = Instance.new("UIListLayout")
+    contentLayout.Padding = UDim.new(0, 5)
+    contentLayout.Parent = sectionContent
+    
+    section.Frame = sectionFrame
+    section.Content = sectionContent
+    
+    table.insert(self.Sections, section)
+    
+    return section
+end
+
+-- إضافة زر إلى القسم
+function Xenolib.Section:AddButton(buttonName, callback)
+    local button = Instance.new("TextButton")
+    button.Name = buttonName .. "Button"
+    button.Size = UDim2.new(1, 0, 0, 30)
+    button.BackgroundColor3 = Xenolib.Colors.Primary
+    button.Text = buttonName
+    button.TextColor3 = Xenolib.Colors.Text
+    button.Font = Enum.Font.Gotham
+    button.TextSize = 12
+    button.Parent = self.Content
+    
+    local buttonCorner = Instance.new("UICorner")
+    buttonCorner.CornerRadius = UDim.new(0, 5)
+    buttonCorner.Parent = button
+    
+    -- أنيميشن الضغط
+    button.MouseButton1Down:Connect(function()
+        local tween = TweenService:Create(
+            button,
+            TweenInfo.new(0.1, Xenolib.Animations.EaseStyles.Quad, Xenolib.Animations.EaseDirections.Out),
+            {BackgroundColor3 = Xenolib.Colors.Accent}
+        )
+        tween:Play()
+    end)
+    
+    button.MouseButton1Up:Connect(function()
+        local tween = TweenService:Create(
+            button,
+            TweenInfo.new(0.1, Xenolib.Animations.EaseStyles.Quad, Xenolib.Animations.EaseDirections.Out),
+            {BackgroundColor3 = Xenolib.Colors.Primary}
+        )
+        tween:Play()
+        
+        if callback then
+            callback()
+        end
+    end)
+    
+    return button
+end
+
+-- إضافة مربع نص إلى القسم
+function Xenolib.Section:AddTextBox(placeholder, callback)
+    local textBoxFrame = Instance.new("Frame")
+    textBoxFrame.Name = "TextBoxFrame"
+    textBoxFrame.Size = UDim2.new(1, 0, 0, 30)
+    textBoxFrame.BackgroundColor3 = Xenolib.Colors.Secondary
+    textBoxFrame.Parent = self.Content
+    
+    local textBoxCorner = Instance.new("UICorner")
+    textBoxCorner.CornerRadius = UDim.new(0, 5)
+    textBoxCorner.Parent = textBoxFrame
+    
+    local textBox = Instance.new("TextBox")
+    textBox.Name = "TextBox"
+    textBox.Size = UDim2.new(1, -10, 1, -10)
+    textBox.Position = UDim2.new(0, 5, 0, 5)
+    textBox.BackgroundTransparency = 1
+    textBox.PlaceholderText = placeholder or "Enter text..."
+    textBox.Text = ""
+    textBox.TextColor3 = Xenolib.Colors.Text
+    textBox.Font = Enum.Font.Gotham
+    textBox.TextSize = 12
+    textBox.Parent = textBoxFrame
+    
+    textBox.FocusLost:Connect(function(enterPressed)
+        if enterPressed and callback then
+            callback(textBox.Text)
+        end
+    end)
+    
+    return textBox
+end
+
+-- إضافة منزلق إلى القسم
+function Xenolib.Section:AddSlider(name, minValue, maxValue, defaultValue, callback)
+    local slider = {}
+    slider.Name = name or "Slider"
+    slider.Min = minValue or 0
+    slider.Max = maxValue or 100
+    slider.Value = defaultValue or minValue
+    
+    local sliderFrame = Instance.new("Frame")
+    sliderFrame.Name = name .. "SliderFrame"
+    sliderFrame.Size = UDim2.new(1, 0, 0, 50)
+    sliderFrame.BackgroundTransparency = 1
+    sliderFrame.Parent = self.Content
+    
+    local sliderTitle = Instance.new("TextLabel")
+    sliderTitle.Name = "Title"
+    sliderTitle.Size = UDim2.new(1, 0, 0, 15)
+    sliderTitle.BackgroundTransparency = 1
+    sliderTitle.Text = name .. ": " .. slider.Value
+    sliderTitle.TextColor3 = Xenolib.Colors.Text
+    sliderTitle.TextXAlignment = Enum.TextXAlignment.Left
+    sliderTitle.Font = Enum.Font.Gotham
+    sliderTitle.TextSize = 12
+    sliderTitle.Parent = sliderFrame
+    
+    local sliderBarFrame = Instance.new("Frame")
+    sliderBarFrame.Name = "SliderBarFrame"
+    sliderBarFrame.Size = UDim2.new(1, 0, 0, 10)
+    sliderBarFrame.Position = UDim2.new(0, 0, 0, 20)
+    sliderBarFrame.BackgroundColor3 = Xenolib.Colors.Secondary
+    sliderBarFrame.Parent = sliderFrame
+    
+    local sliderBarCorner = Instance.new("UICorner")
+    sliderBarCorner.CornerRadius = UDim.new(1, 0)
+    sliderBarCorner.Parent = sliderBarFrame
+    
+    local sliderFill = Instance.new("Frame")
+    sliderFill.Name = "SliderFill"
+    sliderFill.Size = UDim2.new(0, 0, 1, 0)
+    sliderFill.BackgroundColor3 = Xenolib.Colors.Primary
+    sliderFill.Parent = sliderBarFrame
+    
+    local sliderFillCorner = Instance.new("UICorner")
+    sliderFillCorner.CornerRadius = UDim.new(1, 0)
+    sliderFillCorner.Parent = sliderFill
+    
+    local sliderButton = Instance.new("TextButton")
+    sliderButton.Name = "SliderButton"
+    sliderButton.Size = UDim2.new(0, 20, 0, 20)
+    sliderButton.Position = UDim2.new(0, 0, 0, 15)
+    sliderButton.BackgroundColor3 = Xenolib.Colors.Accent
+    sliderButton.Text = ""
+    sliderButton.Parent = sliderFrame
+    
+    local sliderButtonCorner = Instance.new("UICorner")
+    sliderButtonCorner.CornerRadius = UDim.new(1, 0)
+    sliderButtonCorner.Parent = sliderButton
+    
+    -- إعداد أحداث السحب
+    local dragging = false
+    
+    local function updateSlider(input)
+        local relativeX = (input.Position.X - sliderBarFrame.AbsolutePosition.X) / sliderBarFrame.AbsoluteSize.X
+        local value = math.floor((slider.Max - slider.Min) * math.clamp(relativeX, 0, 1) + slider.Min)
+        
+        slider.Value = value
+        sliderTitle.Text = name .. ": " .. value
+        
+        local fillSize = UDim2.new(math.clamp(relativeX, 0, 1), 0, 1, 0)
+        local tween = TweenService:Create(
+            sliderFill,
+            TweenInfo.new(0.1, Xenolib.Animations.EaseStyles.Quad, Xenolib.Animations.EaseDirections.Out),
+            {Size = fillSize}
+        )
+        tween:Play()
+        
+        sliderButton.Position = UDim2.new(math.clamp(relativeX, 0, 1), -10, 0, 15)
+        
+        if callback then
+            callback(value)
+        end
+    end
+    
+    sliderButton.MouseButton1Down:Connect(function()
+        dragging = true
+    end)
+    
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = false
+        end
+    end)
+    
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            updateSlider(input)
+        end
+    end)
+    
+    sliderBarFrame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            updateSlider(input)
+        end
+    end)
+    
+    -- تعيين القيمة الافتراضية
+    local defaultRatio = (slider.Value - slider.Min) / (slider.Max - slider.Min)
+    sliderFill.Size = UDim2.new(defaultRatio, 0, 1, 0)
+    sliderButton.Position = UDim2.new(defaultRatio, -10, 0, 15)
+    
+    return slider
+end
+
+-- مثال على استخدام المكتبة
+--[[
+local ui = Xenolib.new("Xenolib UI Demo", UDim2.new(0, 400, 0, 500), true)
+
+local mainTab = ui:AddTab("Main")
+local settingsTab = ui:AddTab("Settings")
+
+local mainSection = mainTab:AddSection("Functions")
+mainSection:AddButton("Click Me", function()
+    print("Button clicked!")
+end)
+
+local sliderSection = mainTab:AddSection("Options")
+sliderSection:AddSlider("Volume", 0, 100, 50, function(value)
+    print("Volume set to:", value)
+end)
+
+ui:Show()
+]]
+
+return Xenolib
